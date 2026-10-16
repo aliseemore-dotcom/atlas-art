@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DatePrecision {
+  exact
+  circa
+  range
+  unknown
+}
+
+enum VerificationStatus {
+  draft
+  needs_review
+  verified
+}
+
+enum Importance {
+  core
+  extended
+}
+
+enum RegionKind {
+  cultural_region
+  modern_country
+  historical_state
+  city
+}
+
+enum ArtistRegionRole {
+  born
+  worked
+  studied
+  associated
+}
+
+// Исторические годы — целые числа; NULL = неизвестно (не 0).
+model Artist {
+  id                 String             @id @default(cuid())
+  slug               String             @unique
+  seedId             String?            @unique // постоянный ID из data/artists_seed.csv
+  nameRu             String
+  nameOriginal       String?
+  alternateNames     String[]
+  nameSearch         String             @default("") // нормализованное имя (нижний регистр, ё->е) для поиска
+  birthYear          Int?
+  deathYear          Int?
+  activeFrom         Int?
+  activeTo           Int?
+  birthPrecision     DatePrecision      @default(unknown)
+  deathPrecision     DatePrecision      @default(unknown)
+  birthYearMin       Int?
+  birthYearMax       Int?
+  deathYearMin       Int?
+  deathYearMax       Int?
+  bio                String?
+  eraLabel           String? // ярлык из черновика, не является направлением
+  verificationStatus VerificationStatus @default(draft)
+  importance         Importance         @default(extended)
+  movements          ArtistMovement[]
+  genres             ArtistGenre[]
+  regions            ArtistRegion[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([birthYear])
+  @@index([nameSearch])
+}
+
+model Movement {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  nameRu      String
+  fromYear    Int?
+  toYear      Int?
+  description String?
+  artists     ArtistMovement[]
+}
+
+model Genre {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  nameRu      String
+  description String?
+  artists     ArtistGenre[]
+}
+
+model Region {
+  id         String         @id @default(cuid())
+  slug       String         @unique
+  nameRu     String
+  kind       RegionKind
+  activeFrom Int?
+  activeTo   Int?
+  artists    ArtistRegion[]
+}
+
+model ArtistMovement {
+  artistId   String
+  movementId String
+  artist     Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  movement   Movement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, movementId])
+  @@index([movementId])
+}
+
+model ArtistGenre {
+  artistId String
+  genreId  String
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  genre    Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, genreId])
+  @@index([genreId])
+}
+
+model ArtistRegion {
+  artistId String
+  regionId String
+  role     ArtistRegionRole
+  fromYear Int?
+  toYear   Int?
+  artist   Artist           @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  region   Region           @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, regionId, role])
+  @@index([regionId])
+}

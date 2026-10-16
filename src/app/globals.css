@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f7f5f0;
+  --color-ink: #222222;
+  --color-brass: #a38a62; /* заливки и линии */
+  --color-brass-ink: #6b5733; /* текст и ссылки (контраст AA на фоне paper) */
+  --color-line: #ddd6c8;
+  --color-card: #fffdf8;
+  --color-muted: #5c5750;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: ui-serif, Georgia, "Times New Roman", serif;
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+body { min-height: 100vh; }
+h1, h2, h3 { font-family: var(--font-serif); }
+
+a { color: var(--color-brass-ink); }
+:focus-visible { outline: 3px solid var(--color-brass-ink); outline-offset: 2px; }
+svg a:focus-visible { outline: none; }
+svg a:focus-visible .bar { stroke: var(--color-ink); stroke-width: 2.5; }
+
+.skip-link { position: absolute; left: -9999px; }
+.skip-link:focus { left: 8px; top: 8px; z-index: 50; background: var(--color-card); padding: 8px 12px; }
