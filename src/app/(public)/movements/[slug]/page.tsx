@@ -42,7 +42,7 @@ export default async function MovementPage({ params }: Props) {
       <p className="text-muted">{m.description ?? "Описание и признаки направления пока не добавлены."}</p>
       <section aria-labelledby="m-artists">
         <h2 id="m-artists" className="text-xl font-semibold">Художники в наборе</h2>
-        <ul className="mt-2 divide-y divide-line rounded border border-line bg-card">
+        <ul className="mt-2 divide-y divide-line  border border-line bg-card">
           {m.artists.map(({ artist }) => (
             <li key={artist.id} className="flex flex-wrap gap-x-4 px-4 py-2">
               <Link href={`/artists/${artist.slug}`}>{artist.nameRu}</Link>

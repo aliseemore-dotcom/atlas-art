@@ -67,10 +67,10 @@ describe("isContemporary", () => {
 describe("formatLifespan", () => {
   it("неизвестное не заменяется выдуманным", () => {
     expect(formatLifespan(artist({}))).toBe("даты неизвестны");
-    expect(formatLifespan(artist({ birthYear: 1949, birthPrecision: "exact" }))).toBe("1949 – ?");
+    expect(formatLifespan(artist({ birthYear: 1949, birthPrecision: "exact" }))).toBe("1949 — ?");
     expect(
       formatLifespan(artist({ birthYear: 1340, deathYear: 1405, birthPrecision: "circa", deathPrecision: "circa" })),
-    ).toBe("ок. 1340 – ок. 1405");
+    ).toBe("ок. 1340 — ок. 1405");
   });
 });
 

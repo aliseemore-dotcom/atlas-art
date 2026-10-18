@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getArtistBySlug, getContemporaries } from "@/lib/queries/artists";
+import { getArtistRelationships } from "@/lib/queries/tree";
 import { formatLifespan, formatYear } from "@/lib/timeline/interval";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ export default async function ArtistPage({ params }: Props) {
   const artist = await getArtistBySlug(slug);
   if (!artist) notFound();
   const contemporaries = await getContemporaries(artist);
+  const relations = await getArtistRelationships(artist.id);
   const unverified = artist.verificationStatus !== "verified";
   const region = artist.regions[0]?.region;
 
@@ -42,7 +44,7 @@ export default async function ArtistPage({ params }: Props) {
         <div
           role="img"
           aria-label="Изображение отсутствует"
-          className="flex h-40 w-32 shrink-0 items-center justify-center rounded border border-dashed border-line bg-card text-center text-xs text-muted"
+          className="flex h-40 w-32 shrink-0 items-center justify-center  border border-dashed border-line bg-card text-center text-xs text-muted"
         >
           Фото нет: права на изображение не подтверждены
         </div>
@@ -55,7 +57,7 @@ export default async function ArtistPage({ params }: Props) {
             {artist.deathYear === null && artist.birthYear !== null && " Год смерти в наборе не указан."}
           </p>
           <p className="mt-2">
-            <span className={`inline-block rounded px-2 py-0.5 text-sm ${unverified ? "bg-line" : "bg-brass text-ink"}`}>
+            <span className={`inline-block  px-2 py-0.5 text-sm ${unverified ? "bg-line" : "bg-brass text-ink"}`}>
               {STATUS[artist.verificationStatus]}
             </span>
           </p>
@@ -63,7 +65,7 @@ export default async function ArtistPage({ params }: Props) {
       </header>
 
       {unverified && (
-        <p role="note" className="rounded border border-line bg-card p-3 text-sm">
+        <p role="note" className="border border-line bg-card p-3 text-sm">
           Данные карточки взяты из чернового учебного набора и ещё не сверены с музейными и научными источниками.
         </p>
       )}
@@ -103,8 +105,37 @@ export default async function ArtistPage({ params }: Props) {
       </section>
 
       <section aria-labelledby="rel-h">
-        <h2 id="rel-h" className="text-xl font-semibold">Подтверждённые связи</h2>
-        <p className="mt-2 text-muted">Подтверждённых связей (учитель, влияние, сотрудничество) пока нет: они добавляются вместе с источниками.</p>
+        <h2 id="rel-h" className="text-xl">Учителя, ученики, связи</h2>
+        {relations.length === 0 ? (
+          <p className="mt-2 text-muted">Связей (учитель, влияние, сотрудничество) пока нет: они добавляются вместе с источниками.</p>
+        ) : (
+          <>
+            <ul className="mt-2 space-y-2 text-sm">
+              {relations.map((r) => {
+                const other = r.fromArtistId === artist.id ? r.to : r.from;
+                const label =
+                  r.type === "teacher_of" ? (r.fromArtistId === artist.id ? "Ученик" : "Учитель") : r.type === "influenced" ? (r.fromArtistId === artist.id ? "Повлиял на" : "Испытал влияние") : "Работали вместе";
+                return (
+                  <li key={r.id}>
+                    <span className="text-muted">{label}:</span> <Link href={`/artists/${other.slug}`}>{other.nameRu}</Link>{" "}
+                    {r.verificationStatus === "verified" ? (
+                      <span className="label text-heavenly-ink">ПОДТВЕРЖДЕНО</span>
+                    ) : (
+                      <span className="label text-rose-dust">НЕ СВЕРЕНО</span>
+                    )}
+                    {r.sources.map((x) => (
+                      <span key={x.sourceId} className="block text-xs text-muted">{x.source.title}</span>
+                    ))}
+                  </li>
+                );
+              })}
+            </ul>
+            {relations.some((r) => r.verificationStatus !== "verified") && (
+              <p className="mt-2 text-sm text-muted">Связи со статусом «не сверено» внесены в черновик без источника и не являются подтверждёнными фактами.</p>
+            )}
+            <p className="mt-2 text-sm"><Link href={`/regions/${region?.slug ?? "russia"}/tree`}>Открыть древо</Link></p>
+          </>
+        )}
       </section>
 
       <section aria-labelledby="cont-h">

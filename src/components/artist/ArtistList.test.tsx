@@ -20,7 +20,7 @@ describe("ArtistList", () => {
 
   it("частичные даты помечены", () => {
     render(<ArtistList items={[{ ...base, birthYear: 1949, birthPrecision: "exact", start: 1949, overlap: "maybe" }]} />);
-    expect(screen.getByText("1949 – ?")).toBeInTheDocument();
+    expect(screen.getByText("1949 — ?")).toBeInTheDocument();
     expect(screen.getByText("часть дат неизвестна")).toBeInTheDocument();
   });
 });

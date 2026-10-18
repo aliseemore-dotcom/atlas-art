@@ -61,11 +61,11 @@ export function formatYear(year: number | null, precision: DatePrecision): strin
   return precision === "circa" ? `ок. ${year}` : String(year);
 }
 
-/** "1860–1930", "1949 – н. в. / дата смерти неизвестна", "даты неизвестны". */
+/** "1860 — 1930", "1949 — ?", "даты неизвестны". */
 export function formatLifespan(a: DatedArtist): string {
   const { birthYear: b, deathYear: d } = a;
   if (b === null && d === null) return "даты неизвестны";
   const left = b === null ? "?" : formatYear(b, a.birthPrecision);
   const right = d === null ? "?" : formatYear(d, a.deathPrecision);
-  return `${left} – ${right}`;
+  return `${left} — ${right}`;
 }

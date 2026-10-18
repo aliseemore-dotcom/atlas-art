@@ -1,29 +1,115 @@
+@import "@fontsource/onest/cyrillic-400.css";
+@import "@fontsource/onest/cyrillic-500.css";
+@import "@fontsource/onest/cyrillic-600.css";
+@import "@fontsource/onest/latin-400.css";
+@import "@fontsource/onest/latin-600.css";
+@import "@fontsource/ibm-plex-mono/cyrillic-400.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
 @import "tailwindcss";
 
+/* Токены дизайн-системы «Древо художников» (tokens.json) */
 @theme {
-  --color-paper: #f7f5f0;
-  --color-ink: #222222;
-  --color-brass: #a38a62; /* заливки и линии */
-  --color-brass-ink: #6b5733; /* текст и ссылки (контраст AA на фоне paper) */
-  --color-line: #ddd6c8;
-  --color-card: #fffdf8;
-  --color-muted: #5c5750;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-serif: ui-serif, Georgia, "Times New Roman", serif;
+  --color-milk: #fff7e6;
+  --color-wine: #930400;
+  --color-wine-deep: #6e0300;
+  --color-heavenly: #95baeb;
+  --color-heavenly-ink: #2f5fa8;
+  --color-ink: #3a0a07;
+  --color-rose-dust: #7a4a44;
+  --color-cream: #f6e7cf;
+  --color-crust: #ebd8c4;
+  --color-on-wine: #fff7e6;
+  --color-rose-on-wine: #f4d3cb;
+
+  /* алиасы прежних имён, чтобы страницы фазы 1 не ломались */
+  --color-paper: var(--color-milk);
+  --color-line: var(--color-crust);
+  --color-card: var(--color-cream);
+  --color-muted: var(--color-rose-dust);
+  --color-brass: var(--color-wine);
+  --color-brass-ink: var(--color-wine);
+
+  --font-sans: Onest, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 
 html {
-  background: var(--color-paper);
+  background: var(--color-milk);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 27px;
 }
 body { min-height: 100vh; }
-h1, h2, h3 { font-family: var(--font-serif); }
 
-a { color: var(--color-brass-ink); }
-:focus-visible { outline: 3px solid var(--color-brass-ink); outline-offset: 2px; }
+/* Один гротеск: заголовки 600 с плотной разрядкой, без засечек и курсива */
+h1, h2, h3 { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
+h1 { letter-spacing: -0.05em; }
+
+a { color: var(--color-wine); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--color-heavenly-ink); outline-offset: 2px; }
+
+/* Каталожная метка: IBM Plex Mono, заглавными */
+.label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.index {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  letter-spacing: 0.06em;
+}
+
+/* Кнопка-пилюля: контур 1px ink, подпись label, наведение — wine */
+.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  padding: 0 24px;
+  border: 1px solid var(--color-ink);
+  border-radius: 24px;
+  background: transparent;
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-pill:hover { border-color: var(--color-wine); color: var(--color-wine); }
+.btn-pill[aria-pressed="true"], .btn-pill[aria-current="true"] { background: var(--color-ink); color: var(--color-milk); }
+.btn-pill.btn-sm { min-height: 36px; padding: 0 16px; }
+
+/* Кнопка-иконка: круг 44px с обводкой crust */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-crust);
+  border-radius: 24px;
+  background: var(--color-milk);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.btn-icon:hover { border-color: var(--color-wine); color: var(--color-wine); }
+
+.skip-link { position: absolute; left: -9999px; }
+.skip-link:focus { left: 8px; top: 8px; z-index: 50; background: var(--color-cream); padding: 8px 12px; }
+
+/* Шкала: фокус на полосе-ссылке */
 svg a:focus-visible { outline: none; }
 svg a:focus-visible .bar { stroke: var(--color-ink); stroke-width: 2.5; }
 
-.skip-link { position: absolute; left: -9999px; }
-.skip-link:focus { left: 8px; top: 8px; z-index: 50; background: var(--color-card); padding: 8px 12px; }
+/* React Flow: свой фон, без служебных подписей */
+.react-flow { background: transparent; }
+.react-flow__attribution { display: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

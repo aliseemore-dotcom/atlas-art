@@ -1,11 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { parsePortraitsCsv, parseRelationshipsCsv, parseSourcesCsv } from "../src/lib/import/relationships";
 import { parseSeedCsv } from "../src/lib/import/seed";
 import { slugify } from "../src/lib/text";
 
 const prisma = new PrismaClient();
-const CSV = path.resolve(import.meta.dirname, "../data/artists_seed.csv");
+const DATA = path.resolve(import.meta.dirname, "../data");
+const CSV = path.join(DATA, "artists_seed.csv");
+const readData = (f: string) => readFileSync(path.join(DATA, f), "utf8");
 
 /** Идемпотентный импорт: upsert по постоянному seedId. Проверенные вручную записи (verified) не перезаписываются. */
 async function main() {
@@ -75,10 +78,65 @@ async function main() {
     ]);
   }
 
+  // ---- источники, связи, портреты ----
+  const allIssues = [...issues];
+  const sources = parseSourcesCsv(readData("sources_seed.csv"));
+  sources.issues.forEach((i) => console.error(`[ошибка источника] строка ${i.line} (${i.id ?? "?"}): ${i.message}`));
+  allIssues.push(...sources.issues);
+  const sourceDbId = new Map<string, string>();
+  for (const sr of sources.records) {
+    const { seedId, ...rest } = sr;
+    const row = await prisma.source.upsert({ where: { seedId }, update: rest, create: { seedId, ...rest } });
+    sourceDbId.set(seedId, row.id);
+  }
+
+  const dbArtists = await prisma.artist.findMany({ select: { id: true, seedId: true, slug: true, birthYear: true } });
+  const bySeed = new Map(dbArtists.filter((a) => a.seedId).map((a) => [a.seedId as string, a]));
+  const rels = parseRelationshipsCsv(
+    readData("relationships_seed.csv"),
+    new Map([...bySeed].map(([k, a]) => [k, { slug: a.slug, birthYear: a.birthYear }])),
+    new Set(sources.records.map((x) => x.seedId)),
+  );
+  rels.issues.forEach((i) => console.error(`[ошибка связи] строка ${i.line} (${i.id ?? "?"}): ${i.message}`));
+  rels.warnings.forEach((i) => console.warn(`[предупреждение] связь ${i.id}: ${i.message}`));
+  allIssues.push(...rels.issues);
+
+  let relCount = 0;
+  if (rels.issues.length === 0) {
+    for (const r of rels.records) {
+      const fromId = bySeed.get(r.fromSeedId)?.id as string;
+      const toId = bySeed.get(r.toSeedId)?.id as string;
+      const prev = await prisma.relationship.findUnique({ where: { seedId: r.seedId } });
+      if (prev?.verificationStatus === "verified") {
+        console.warn(`[конфликт] связь ${r.seedId}: запись verified, черновые данные не применены`);
+        continue;
+      }
+      const data = { fromArtistId: fromId, toArtistId: toId, type: r.type, fromYear: r.fromYear, toYear: r.toYear, verificationStatus: r.verificationStatus, evidenceNote: r.evidenceNote };
+      const rel = await prisma.relationship.upsert({ where: { seedId: r.seedId }, update: data, create: { seedId: r.seedId, ...data } });
+      await prisma.relationshipSource.deleteMany({ where: { relationshipId: rel.id } });
+      const links = r.sourceSeedIds.map((sid) => ({ relationshipId: rel.id, sourceId: sourceDbId.get(sid) as string }));
+      if (links.length) await prisma.relationshipSource.createMany({ data: links });
+      relCount++;
+    }
+  } else {
+    console.error("Связи не импортированы: исправьте ошибки выше (частичный импорт связей не выполняется).");
+  }
+
+  const portraits = parsePortraitsCsv(readData("portraits.csv"), new Set(dbArtists.map((a) => a.slug)));
+  portraits.issues.forEach((i) => console.error(`[ошибка портрета] строка ${i.line} (${i.id ?? "?"}): ${i.message}`));
+  allIssues.push(...portraits.issues);
+  for (const p of portraits.records) {
+    await prisma.artist.update({
+      where: { slug: p.slug },
+      data: { portraitUrl: p.url, portraitRights: p.rights, portraitCredit: p.credit, portraitSourceUrl: p.sourceUrl },
+    });
+  }
+
+  console.log(`Связи: ${relCount}, источники: ${sources.records.length}, портреты: ${portraits.records.length}.`);
   console.log(
     `Импорт: создано ${created}, обновлено ${updated}, пропущено (verified) ${skipped}, ошибок в CSV ${issues.length}.`,
   );
-  if (issues.length > 0) process.exitCode = 1;
+  if (allIssues.length > 0) process.exitCode = 1;
 }
 
 main()

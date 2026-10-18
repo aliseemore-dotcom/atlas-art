@@ -123,14 +123,13 @@ export function TimelineView({
 
   if (dated.length === 0 && undated.length === 0) return null;
 
-  const btn = "rounded border border-line bg-card px-3 py-1 text-sm font-medium hover:bg-line";
-
+  
   return (
     <section aria-label="Хронология" className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={zoomIn} className={btn} aria-label="Приблизить">+</button>
-        <button type="button" onClick={zoomOut} className={btn} aria-label="Отдалить">−</button>
-        <button type="button" onClick={reset} className={btn}>Сброс</button>
+        <button type="button" onClick={zoomIn} className="btn-pill btn-sm" aria-label="Приблизить">+</button>
+        <button type="button" onClick={zoomOut} className="btn-pill btn-sm" aria-label="Отдалить">−</button>
+        <button type="button" onClick={reset} className="btn-pill btn-sm">Сброс</button>
         <span className="text-xs text-muted">
           Перетаскивание — сдвиг, Ctrl + колесо — масштаб; с клавиатуры: фокус на шкале, затем + − 0 и стрелки.
         </span>
@@ -142,34 +141,24 @@ export function TimelineView({
         role="group"
         aria-label="Шкала времени. Полосы художников — ссылки на карточки."
         onKeyDown={onKey}
-        className="max-h-[70vh] overflow-y-auto overflow-x-hidden rounded border border-line bg-card"
+        className="max-h-[70vh] overflow-y-auto overflow-x-hidden  border border-line bg-card"
       >
         {!scale ? (
           <p className="p-6 text-sm text-muted">Загрузка хронологии…</p>
         ) : (
           <svg ref={svgRef} width={width} height={height} className="block touch-pan-y select-none" role="presentation">
-            <defs>
-              <linearGradient id="open-left" x1="0" x2="1">
-                <stop offset="0" stopColor="#a38a62" stopOpacity="0" />
-                <stop offset="1" stopColor="#a38a62" stopOpacity="1" />
-              </linearGradient>
-              <linearGradient id="open-right" x1="0" x2="1">
-                <stop offset="0" stopColor="#a38a62" stopOpacity="1" />
-                <stop offset="1" stopColor="#a38a62" stopOpacity="0" />
-              </linearGradient>
-            </defs>
 
             {/* сетка и подписи оси */}
             {ticks.map((tk) => {
               const x = scale(tk.year);
               return (
                 <g key={`${tk.kind}-${tk.year}`}>
-                  <line x1={x} x2={x} y1={AXIS - 6} y2={height} stroke="#ddd6c8" strokeWidth={tk.kind === "century" ? 1.5 : 1} />
-                  <text x={x + 4} y={tk.kind === "century" ? 16 : 30} fontSize={tk.kind === "century" ? 12 : 11} fill="#5c5750">
+                  <line x1={x} x2={x} y1={AXIS - 6} y2={height} stroke="#ebd8c4" strokeWidth={tk.kind === "century" ? 1.5 : 1} />
+                  <text x={x + 4} y={tk.kind === "century" ? 16 : 30} fontSize={tk.kind === "century" ? 12 : 11} fill="#7a4a44">
                     {tk.year}
                   </text>
                   {tk.kind === "century" && tk.year > 0 && (
-                    <text x={x + 4} y={32} fontSize={10} fill="#5c5750">{centuryLabel(tk.year + 1)}</text>
+                    <text x={x + 4} y={32} fontSize={10} fill="#7a4a44">{centuryLabel(tk.year + 1)}</text>
                   )}
                 </g>
               );
@@ -182,7 +171,7 @@ export function TimelineView({
                 width={Math.max(2, scale(Math.max(...focusRange)) - scale(Math.min(...focusRange)))}
                 y={AXIS - 6}
                 height={height}
-                fill="#a38a62"
+                fill="#930400"
                 opacity={0.12}
               />
             )}
@@ -200,7 +189,8 @@ export function TimelineView({
               else if (xs !== null) { x0 = xs; x1 = xs + OPEN_EDGE_PX; }
               else { x1 = xe as number; x0 = x1 - OPEN_EDGE_PX; }
               const w = Math.max(3, x1 - x0);
-              const fill = xs !== null && xe !== null ? "#a38a62" : xs !== null ? "url(#open-right)" : "url(#open-left)";
+              const open = xs === null || xe === null;
+              const fill = open ? "#fff7e6" : "#930400";
               const circa = it.birthPrecision === "circa" || it.deathPrecision === "circa";
               // подпись всегда в видимой области: справа от полосы, иначе поверх неё у видимого края
               const visX0 = Math.max(x0, 0);
@@ -225,18 +215,18 @@ export function TimelineView({
                     rx={3}
                     fill={fill}
                     opacity={it.overlap === "maybe" ? 0.6 : 1}
-                    stroke="#6b5733"
-                    strokeWidth={circa ? 1.5 : 0.75}
-                    strokeDasharray={circa ? "4 3" : undefined}
+                    stroke="#930400"
+                    strokeWidth={circa || open ? 1.5 : 0.75}
+                    strokeDasharray={circa || open ? "4 3" : undefined}
                   />
                   <text
                     x={labelX}
                     y={y + ROW / 2 + 4}
                     fontSize={12}
-                    fill="#222"
+                    fill="#3a0a07"
                     textAnchor={labelEnd ? "end" : "start"}
                     paintOrder="stroke"
-                    stroke="#fffdf8"
+                    stroke="#fff7e6"
                     strokeWidth={3}
                   >
                     {it.nameRu}
@@ -248,10 +238,10 @@ export function TimelineView({
         )}
       </div>
 
-      <ul className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted" aria-label="Легенда">
-        <li><span className="mr-1 inline-block h-2.5 w-6 rounded-sm border border-brass-ink bg-brass align-middle" />известны оба края (годы жизни)</li>
-        <li><span className="mr-1 inline-block h-2.5 w-6 rounded-sm border border-dashed border-brass-ink bg-brass align-middle" />пунктир — даты приблизительны («ок.»)</li>
-        <li><span className="mr-1 inline-block h-2.5 w-6 rounded-sm align-middle" style={{ background: "linear-gradient(90deg,#a38a62,transparent)" }} />плавный край — год неизвестен (не обязательно «жив»)</li>
+      <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted" aria-label="Легенда">
+        <li><span className="mr-1 inline-block h-2.5 w-6 border border-wine bg-wine align-middle" />известны оба края (годы жизни)</li>
+        <li><span className="mr-1 inline-block h-2.5 w-6 border border-dashed border-wine bg-wine align-middle" />пунктирный контур — даты приблизительны («ок.»)</li>
+        <li><span className="mr-1 inline-block h-2.5 w-6 border border-dashed border-wine bg-milk align-middle" />светлая полоса — один край неизвестен (это не «жив»)</li>
         <li>Совпадение лет жизни не означает знакомства или влияния.</li>
       </ul>
 

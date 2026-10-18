@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtistList } from "@/components/artist/ArtistList";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { RegionTabs } from "@/components/tree/RegionTabs";
 import { TimelineView } from "@/components/timeline/TimelineView";
 import { hasActiveFilters, parseFilters, type Filters } from "@/lib/filters";
 import { getFilterOptions, getRegion, listArtistsPage, queryArtists } from "@/lib/queries/artists";
@@ -49,7 +50,7 @@ export default async function RegionPage({ params, searchParams }: Props) {
     if (e && typeof e === "object" && "digest" in e) throw e; // notFound() и другие служебные исключения Next
     console.error(e);
     return (
-      <p role="alert" className="rounded border border-line bg-card p-4">
+      <p role="alert" className="border border-line bg-card p-4">
         Не удалось загрузить данные. Проверьте, что база данных запущена и миграции применены (см. README), затем обновите страницу.
       </p>
     );
@@ -64,22 +65,18 @@ export default async function RegionPage({ params, searchParams }: Props) {
   const timelineCls = view === "timeline" ? "" : view === "list" ? "hidden" : "hidden md:block";
   const listCls = view === "list" ? "" : view === "timeline" ? "hidden" : "md:hidden";
 
-  const tabCls = "rounded-t border border-b-0 px-4 py-2 text-sm";
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-3xl font-semibold">{region.nameRu}</h1>
+        <p className="label text-rose-dust">{region.nameRu.toUpperCase()} / ХРОНОЛОГИЯ</p>
+        <h1 className="mt-2 text-4xl md:text-6xl">{region.nameRu}</h1>
         <p className="mt-2 max-w-3xl text-muted">
           Русь, Российская империя, СССР и современная Россия. Показаны художники из чернового учебного набора:
           все записи ожидают проверки.
         </p>
       </header>
 
-      <nav aria-label="Разделы региона" className="flex flex-wrap gap-1 border-b border-line">
-        <span aria-current="page" className={`${tabCls} border-line bg-card font-medium`}>Хронология</span>
-        <span aria-disabled="true" title="Появится в MVP2" className={`${tabCls} border-transparent text-muted`}>Направления · скоро</span>
-        <span aria-disabled="true" title="Появится в MVP2" className={`${tabCls} border-transparent text-muted`}>Связи · скоро</span>
-      </nav>
+      <RegionTabs slug={slug} active="timeline" />
 
       <FilterBar action={`/regions/${slug}`} filters={filters} genres={options.genres} movements={options.movements} />
 
@@ -91,13 +88,13 @@ export default async function RegionPage({ params, searchParams }: Props) {
           )}
         </p>
         <div className="ml-auto flex gap-2" role="group" aria-label="Вид">
-          <Link href={href(slug, filters, { view: "timeline", page: undefined })} aria-current={view === "timeline" ? "true" : undefined} className="rounded border border-line px-3 py-1 no-underline aria-[current=true]:bg-ink aria-[current=true]:text-paper">Шкала</Link>
-          <Link href={href(slug, filters, { view: "list", page: undefined })} aria-current={view === "list" ? "true" : undefined} className="rounded border border-line px-3 py-1 no-underline aria-[current=true]:bg-ink aria-[current=true]:text-paper">Список</Link>
+          <Link href={href(slug, filters, { view: "timeline", page: undefined })} aria-current={view === "timeline" ? "true" : undefined} className="btn-pill btn-sm no-underline">Шкала</Link>
+          <Link href={href(slug, filters, { view: "list", page: undefined })} aria-current={view === "list" ? "true" : undefined} className="btn-pill btn-sm no-underline">Список</Link>
         </div>
       </div>
 
       {all.total === 0 ? (
-        <div className="rounded border border-line bg-card p-6" role="status">
+        <div className="border border-line bg-card p-6" role="status">
           <p className="font-medium">
             {hasActiveFilters(filters) ? "Ничего не найдено по этим условиям." : "В этом регионе пока нет художников."}
           </p>

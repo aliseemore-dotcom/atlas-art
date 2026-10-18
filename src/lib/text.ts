@@ -43,3 +43,24 @@ export function canonicalLabel(label: string): string {
   const t = label.trim().replace(/\s+/g, " ");
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
+
+/** Римские цифры для номеров ветвей (1 -> I). */
+export function toRoman(n: number): string {
+  const map: [number, string][] = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let r = "";
+  let rest = n;
+  for (const [v, sym] of map) while (rest >= v) { r += sym; rest -= v; }
+  return r;
+}
+
+/** Инициалы для медальона без портрета: первые буквы первых двух слов имени, начинающихся с заглавной. */
+export function initials(name: string): string {
+  const words = name.split(/\s+/).filter((w) => /^\p{Lu}/u.test(w));
+  return words.slice(0, 2).map((w) => w.charAt(0)).join("") || name.charAt(0).toUpperCase();
+}
+
+/** Фамилия для меток ветвей: последнее слово, заглавными. */
+export function surnameCaps(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return (parts[parts.length - 1] ?? name).toUpperCase();
+}

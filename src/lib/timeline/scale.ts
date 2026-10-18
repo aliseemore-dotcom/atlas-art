@@ -1,4 +1,5 @@
 import { scaleLinear, type ScaleLinear } from "d3-scale";
+import { toRoman } from "@/lib/text";
 
 export interface ZoomTransform {
   k: number;
@@ -51,12 +52,4 @@ export function ticksFor(visible: [number, number]): Tick[] {
 export function centuryLabel(year: number): string {
   const c = Math.floor((year - 1) / 100) + 1;
   return `${toRoman(c)} в.`;
-}
-
-function toRoman(n: number): string {
-  const map: [number, string][] = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
-  let r = "";
-  let rest = n;
-  for (const [v, s] of map) while (rest >= v) { r += s; rest -= v; }
-  return r;
 }

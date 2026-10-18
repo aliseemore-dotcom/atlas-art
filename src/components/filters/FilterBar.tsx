@@ -16,9 +16,9 @@ export function FilterBar({
   genres: Option[];
   movements: Option[];
 }) {
-  const field = "w-full rounded border border-line bg-white px-2 py-1.5 text-sm";
+  const field = "w-full  border border-line bg-white px-2 py-1.5 text-sm";
   return (
-    <form action={action} method="get" role="search" aria-label="Фильтры художников" className="rounded border border-line bg-card p-4">
+    <form action={action} method="get" role="search" aria-label="Фильтры художников" className="border border-line bg-card p-4">
       {filters.view && <input type="hidden" name="view" value={filters.view} />}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <label className="text-sm lg:col-span-2">
@@ -49,7 +49,7 @@ export function FilterBar({
         </label>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button type="submit" className="rounded bg-ink px-4 py-1.5 text-sm font-medium text-paper">Применить</button>
+        <button type="submit" className="btn-pill btn-sm">Применить</button>
         {hasActiveFilters(filters) && (
           <Link href={filters.view ? `${action}?view=${filters.view}` : action} className="text-sm">Сбросить фильтры</Link>
         )}

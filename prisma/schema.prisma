@@ -32,6 +32,26 @@ enum RegionKind {
   city
 }
 
+enum RelationshipType {
+  teacher_of
+  influenced
+  collaborated
+}
+
+enum SourceType {
+  museum
+  catalogue
+  scholarly
+  book
+  other
+}
+
+enum ImageRights {
+  unknown
+  public_domain
+  licensed
+}
+
 enum ArtistRegionRole {
   born
   worked
@@ -60,11 +80,18 @@ model Artist {
   deathYearMax       Int?
   bio                String?
   eraLabel           String? // ярлык из черновика, не является направлением
+  // Портрет показывается только при подтверждённых правах (public_domain/licensed) и указанных авторе и источнике.
+  portraitUrl        String?
+  portraitRights     ImageRights        @default(unknown)
+  portraitCredit     String?
+  portraitSourceUrl  String?
   verificationStatus VerificationStatus @default(draft)
   importance         Importance         @default(extended)
   movements          ArtistMovement[]
   genres             ArtistGenre[]
   regions            ArtistRegion[]
+  relationsFrom      Relationship[]     @relation("RelFrom")
+  relationsTo        Relationship[]     @relation("RelTo")
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -131,4 +158,49 @@ model ArtistRegion {
 
   @@id([artistId, regionId, role])
   @@index([regionId])
+}
+
+model Source {
+  id                String               @id @default(cuid())
+  seedId            String?              @unique
+  title             String
+  authorOrInstitution String?
+  url               String?
+  publicationYear   Int?
+  page              String?
+  notes             String?
+  sourceType        SourceType           @default(other)
+  relationships     RelationshipSource[]
+}
+
+// teacher_of: from = учитель, to = ученик. influenced: from повлиял на to.
+// collaborated: симметрично, хранится в каноническом порядке (from.slug < to.slug).
+// Связь между современниками НЕ создаётся автоматически: пересечение лет жизни ничего не доказывает.
+model Relationship {
+  id                 String               @id @default(cuid())
+  seedId             String?              @unique
+  fromArtistId       String
+  toArtistId         String
+  type               RelationshipType
+  fromYear           Int?
+  toYear             Int?
+  verificationStatus VerificationStatus   @default(needs_review)
+  evidenceNote       String?
+  from               Artist               @relation("RelFrom", fields: [fromArtistId], references: [id], onDelete: Cascade)
+  to                 Artist               @relation("RelTo", fields: [toArtistId], references: [id], onDelete: Cascade)
+  sources            RelationshipSource[]
+  createdAt          DateTime             @default(now())
+
+  @@unique([fromArtistId, toArtistId, type])
+  @@index([toArtistId])
+}
+
+model RelationshipSource {
+  relationshipId String
+  sourceId       String
+  note           String?
+  relationship   Relationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  source         Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@id([relationshipId, sourceId])
 }

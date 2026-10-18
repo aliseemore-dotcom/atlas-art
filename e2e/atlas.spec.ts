@@ -12,7 +12,7 @@ test.beforeEach(({ page }) => {
 
 test("главная → Россия → найти художника → карточка → назад", async ({ page, isMobile }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Россия" }).last().click();
+  await page.getByRole("link", { name: /Хронология/ }).last().click();
   await expect(page).toHaveURL(/\/regions\/russia/);
 
   await page.getByLabel("Поиск по имени").fill("шишкин");
@@ -94,4 +94,63 @@ test("мобильный: по умолчанию список, без гори�
 test("404 для неизвестного художника", async ({ page }) => {
   const res = await page.goto("/artists/net-takogo", { waitUntil: "domcontentloaded" }).catch(() => null);
   expect(res?.status()).toBe(404);
+});
+
+test.describe("древо художников", () => {
+  test("древо открывается, показаны ветви, линии и предупреждение о непроверенных связях", async ({ page, isMobile }) => {
+    test.skip(isMobile === true, "на мобильном по умолчанию список");
+    await page.goto("/regions/russia/tree");
+    await expect(page.getByRole("heading", { name: /Древо художников/ })).toBeVisible();
+    await expect(page.getByTestId("unverified-note")).toContainText("не подтверждённые факты");
+    await expect(page.locator("[data-testid^=node-]").first()).toBeVisible();
+    expect(await page.locator("[data-testid^=node-]").count()).toBeGreaterThanOrEqual(10);
+    await expect(page.getByRole("heading", { name: "КАК ЧИТАТЬ ДРЕВО" })).toBeVisible();
+    await expect(page.getByTestId("branch-label")).toContainText("ВЕТВЬ I");
+  });
+
+  test("клик по медальону показывает связи со статусом, а не как факт", async ({ page, isMobile }) => {
+    test.skip(isMobile === true, "на мобильном по умолчанию список");
+    await page.goto("/regions/russia/tree");
+    await page.getByTestId("node-ilya-repin").click();
+    const panel = page.getByTestId("tree-detail");
+    await expect(panel.getByRole("heading", { name: "Илья Репин" })).toBeVisible();
+    await expect(panel).toContainText("Валентин Серов");
+    await expect(panel).toContainText("НЕ СВЕРЕНО");
+    await expect(panel.getByRole("link", { name: /Карточка художника/ })).toHaveAttribute("href", "/artists/ilya-repin");
+    await page.keyboard.press("Escape");
+    await expect(panel).toContainText("ВЫБЕРИТЕ ХУДОЖНИКА");
+  });
+
+  test("скрытие неподтверждённых связей даёт понятное пустое состояние", async ({ page }) => {
+    await page.goto("/regions/russia/tree?unverified=0");
+    await expect(page.getByText("Подтверждённых связей пока нет.")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Показать связи, ожидающие проверки/ })).toBeVisible();
+  });
+
+  test("переключение ветви через боковую ленту", async ({ page, isMobile }) => {
+    test.skip(isMobile === true, "на мобильном по умолчанию список");
+    await page.goto("/regions/russia/tree");
+    await page.getByRole("navigation", { name: "Ветви древа" }).getByRole("link").nth(1).click();
+    await expect(page).toHaveURL(/branch=/);
+    await expect(page.getByTestId("branch-label")).toContainText("ВЕТВЬ II");
+  });
+
+  test("список — запасной вид: поколения, учителя и ученики", async ({ page }) => {
+    await page.goto("/regions/russia/tree?view=list");
+    await expect(page.getByText("ПОКОЛЕНИЕ 1")).toBeVisible();
+    await expect(page.getByText("Учителя:").first()).toBeVisible();
+  });
+
+  test("мобильный: по умолчанию список, без горизонтальной прокрутки", async ({ page, isMobile }) => {
+    test.skip(!isMobile, "только мобильный проект");
+    await page.goto("/regions/russia/tree");
+    await expect(page.getByText("ПОКОЛЕНИЕ 1")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+  });
+
+  test("карточка художника показывает связи с пометкой", async ({ page }) => {
+    await page.goto("/artists/ilya-repin");
+    await expect(page.getByText("Валентин Серов").first()).toBeVisible();
+    await expect(page.getByText("НЕ СВЕРЕНО").first()).toBeVisible();
+  });
 });
