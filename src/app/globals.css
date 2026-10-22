@@ -1,115 +1,56 @@
-@import "@fontsource/onest/cyrillic-400.css";
-@import "@fontsource/onest/cyrillic-500.css";
-@import "@fontsource/onest/cyrillic-600.css";
-@import "@fontsource/onest/latin-400.css";
-@import "@fontsource/onest/latin-600.css";
-@import "@fontsource/ibm-plex-mono/cyrillic-400.css";
-@import "@fontsource/ibm-plex-mono/latin-400.css";
-@import "tailwindcss";
+@import "@fontsource/manrope/cyrillic-400.css";
+@import "@fontsource/manrope/cyrillic-700.css";
+@import "@fontsource/manrope/latin-400.css";
+@import "@fontsource/manrope/latin-700.css";
 
-/* Токены дизайн-системы «Древо художников» (tokens.json) */
-@theme {
-  --color-milk: #fff7e6;
-  --color-wine: #930400;
-  --color-wine-deep: #6e0300;
-  --color-heavenly: #95baeb;
-  --color-heavenly-ink: #2f5fa8;
-  --color-ink: #3a0a07;
-  --color-rose-dust: #7a4a44;
-  --color-cream: #f6e7cf;
-  --color-crust: #ebd8c4;
-  --color-on-wine: #fff7e6;
-  --color-rose-on-wine: #f4d3cb;
-
-  /* алиасы прежних имён, чтобы страницы фазы 1 не ломались */
-  --color-paper: var(--color-milk);
-  --color-line: var(--color-crust);
-  --color-card: var(--color-cream);
-  --color-muted: var(--color-rose-dust);
-  --color-brass: var(--color-wine);
-  --color-brass-ink: var(--color-wine);
-
-  --font-sans: Onest, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+/* Палитра сохранена из дизайн-системы; фон страницы — белый. Шрифт один: Manrope Regular и Bold. */
+:root {
+  --bg: #ffffff;
+  --wine: #930400;
+  --heavenly: #95baeb;
+  --heavenly-ink: #2f5fa8;
+  --ink: #3a0a07;
+  --rose-dust: #7a4a44;
+  --cream: #f6e7cf;
+  --crust: #ebd8c4;
+  --font: Manrope, "Helvetica Neue", Arial, sans-serif;
 }
 
-html {
-  background: var(--color-milk);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-size: 17px;
-  line-height: 27px;
+* { box-sizing: border-box; font-family: var(--font); }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font-size: 14px; line-height: 20px; font-weight: 400; }
+b, strong, h1, h2, h3 { font-weight: 700; }
+:focus-visible { outline: 2px solid var(--heavenly-ink); outline-offset: 2px; }
+
+.tree-page { position: fixed; inset: 0; background: var(--bg); }
+.tree-state { display: grid; place-items: center; height: 100%; padding: 24px; text-align: center; color: var(--rose-dust); }
+
+/* Карточка художника: портрет (прямоугольник), имя, годы */
+.card {
+  width: 112px; height: 196px; padding: 8px;
+  background: var(--bg); border: 1px solid var(--crust);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  text-align: center; user-select: none;
 }
-body { min-height: 100vh; }
-
-/* Один гротеск: заголовки 600 с плотной разрядкой, без засечек и курсива */
-h1, h2, h3 { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
-h1 { letter-spacing: -0.05em; }
-
-a { color: var(--color-wine); text-underline-offset: 3px; }
-:focus-visible { outline: 3px solid var(--color-heavenly-ink); outline-offset: 2px; }
-
-/* Каталожная метка: IBM Plex Mono, заглавными */
-.label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 16px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.card[data-approx="true"] { border-style: dashed; }
+.card .portrait {
+  width: 96px; height: 120px; flex: none; overflow: hidden;
+  background: var(--cream); color: var(--rose-dust);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
 }
-.index {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 20px;
-  letter-spacing: 0.06em;
+.card .portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card .name { font-size: 13px; line-height: 18px; font-weight: 700; color: var(--ink); height: 36px; overflow: hidden; width: 100%; flex: none; }
+.card .years { flex: none; font-size: 11px; line-height: 14px; color: var(--rose-dust); white-space: nowrap; }
+
+/* Управление */
+.controls { position: absolute; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
+.controls button {
+  width: 40px; height: 40px; padding: 0; display: grid; place-items: center;
+  background: var(--bg); color: var(--ink); border: 1px solid var(--crust); cursor: pointer;
 }
+.controls button:hover { border-color: var(--wine); color: var(--wine); }
 
-/* Кнопка-пилюля: контур 1px ink, подпись label, наведение — wine */
-.btn-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 48px;
-  padding: 0 24px;
-  border: 1px solid var(--color-ink);
-  border-radius: 24px;
-  background: transparent;
-  color: var(--color-ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-decoration: none;
-  cursor: pointer;
-}
-.btn-pill:hover { border-color: var(--color-wine); color: var(--color-wine); }
-.btn-pill[aria-pressed="true"], .btn-pill[aria-current="true"] { background: var(--color-ink); color: var(--color-milk); }
-.btn-pill.btn-sm { min-height: 36px; padding: 0 16px; }
-
-/* Кнопка-иконка: круг 44px с обводкой crust */
-.btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--color-crust);
-  border-radius: 24px;
-  background: var(--color-milk);
-  color: var(--color-ink);
-  cursor: pointer;
-}
-.btn-icon:hover { border-color: var(--color-wine); color: var(--color-wine); }
-
-.skip-link { position: absolute; left: -9999px; }
-.skip-link:focus { left: 8px; top: 8px; z-index: 50; background: var(--color-cream); padding: 8px 12px; }
-
-/* Шкала: фокус на полосе-ссылке */
-svg a:focus-visible { outline: none; }
-svg a:focus-visible .bar { stroke: var(--color-ink); stroke-width: 2.5; }
-
-/* React Flow: свой фон, без служебных подписей */
-.react-flow { background: transparent; }
+.react-flow { background: var(--bg); }
 .react-flow__attribution { display: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
