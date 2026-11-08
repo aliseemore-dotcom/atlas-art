@@ -19,7 +19,8 @@ test("на странице только древо: все 114 художник
   await expect(cards(page).first()).toBeVisible();
   expect(await cards(page).count()).toBe(114);
   await expect(page.locator("header, nav, footer, aside, h1, h2")).toHaveCount(0);
-  expect(await page.getByRole("button").count()).toBe(3); // только управление древом
+  expect(await page.getByRole("group", { name: "Управление древом" }).getByRole("button").count()).toBe(3); // только управление древом
+  await expect(page.getByTestId("artist-panel")).toHaveCount(0); // окно появляется только по клику
 });
 
 test("белый фон, только Manrope, портреты прямоугольные", async ({ page }) => {
@@ -124,4 +125,86 @@ test("узкий экран: страница не прокручивается 
   await expect(cards(page).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   await expect(page.getByRole("button", { name: "Всё древо целиком" })).toBeVisible();
+});
+
+test.describe("боковое окно карточки", () => {
+  test("клик по карточке открывает окно; пустые разделы честно пусты", async ({ page }) => {
+    await page.goto("/");
+    await expect(cards(page).first()).toBeVisible();
+    await page.getByRole("button", { name: "Всё древо целиком" }).click();
+    await page.waitForTimeout(500);
+    await page.getByTestId("card-ilya-repin").click(); // настоящий клик мышью по карточке
+    const panel = page.getByTestId("artist-panel");
+    await expect(panel.getByRole("heading", { name: "Илья Репин" })).toBeVisible();
+    await expect(panel).toContainText("1844–1930");
+    await expect(panel).toContainText("Сводка пока не добавлена.");
+    await expect(panel).toContainText("Фактов пока нет.");
+    await expect(panel).toContainText("Картины пока не добавлены.");
+    await expect(page).toHaveURL(/#ilya-repin$/);
+  });
+
+  test("в окне видны связи с пометкой «не сверено»; клик по имени открывает другого художника", async ({ page }) => {
+    await page.goto("/#ilya-repin");
+    const panel = page.getByTestId("artist-panel");
+    await expect(panel.getByRole("heading", { name: "Илья Репин" })).toBeVisible();
+    await expect(panel).toContainText("Учителя:");
+    await expect(panel.locator(".tag").first()).toHaveText("не сверено");
+    await panel.getByRole("button", { name: "Иван Крамской" }).click();
+    await expect(panel.getByRole("heading", { name: "Иван Крамской" })).toBeVisible();
+    await expect(page).toHaveURL(/#ivan-kramskoy$/);
+  });
+
+  test("закрытие: кнопка, Escape и клик по полю древа", async ({ page }) => {
+    await page.goto("/#ilya-repin");
+    const panel = page.getByTestId("artist-panel");
+    await expect(panel).toBeVisible();
+    await panel.getByRole("button", { name: "Закрыть карточку" }).click();
+    await expect(panel).toHaveCount(0);
+    await page.getByRole("button", { name: "Всё древо целиком" }).click();
+    await page.waitForTimeout(500);
+    await page.getByTestId("card-ilya-repin").click();
+    await expect(panel).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+  });
+
+  test("открытая карточка остаётся видимой рядом с окном", async ({ page, isMobile }) => {
+    await page.goto("/#ilya-repin");
+    await expect(page.getByTestId("artist-panel")).toBeVisible();
+    await page.waitForTimeout(600);
+    const box = (await page.getByTestId("card-ilya-repin").boundingBox()) as { x: number; y: number; width: number; height: number };
+    const vp = page.viewportSize() as { width: number; height: number };
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    if (isMobile) expect(box.y + box.height).toBeLessThanOrEqual(vp.height * 0.4 + 1);
+    else expect(box.x + box.width).toBeLessThanOrEqual(vp.width - 440 + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  });
+
+  test("перетаскивание древа за карточку окно не открывает", async ({ page }) => {
+    await page.goto("/");
+    await expect(cards(page).first()).toBeVisible();
+    const b = (await cards(page).first().boundingBox()) as { x: number; y: number; width: number; height: number };
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 + 60, b.y + b.height / 2 + 40, { steps: 6 });
+    await page.mouse.up();
+    await expect(page.getByTestId("artist-panel")).toHaveCount(0);
+  });
+
+  test("клавиатура: Enter на карточке открывает окно", async ({ page }) => {
+    await page.goto("/");
+    await expect(cards(page).first()).toBeVisible();
+    await page.getByTestId("card-ilya-repin").focus();
+    await page.waitForTimeout(500);
+    // фокус подвёл карточку в поле зрения
+    const box = (await page.getByTestId("card-ilya-repin").boundingBox()) as { x: number; y: number; width: number; height: number };
+    const vp = page.viewportSize() as { width: number; height: number };
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.y).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(vp.width + 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(vp.height + 1);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("artist-panel").getByRole("heading", { name: "Илья Репин" })).toBeVisible();
+  });
 });

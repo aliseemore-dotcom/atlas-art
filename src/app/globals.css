@@ -33,6 +33,9 @@ b, strong, h1, h2, h3 { font-weight: 700; }
   text-align: center; user-select: none;
 }
 .card[data-approx="true"] { border-style: dashed; }
+.card { cursor: pointer; }
+.card:hover { border-color: var(--rose-dust); }
+.card[data-selected="true"] { border-color: var(--wine); box-shadow: 0 0 0 1px var(--wine); }
 .card .portrait {
   width: 96px; height: 120px; flex: none; overflow: hidden;
   background: var(--cream); color: var(--rose-dust);
@@ -54,3 +57,37 @@ b, strong, h1, h2, h3 { font-weight: 700; }
 .react-flow { background: var(--bg); }
 .react-flow__attribution { display: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Боковое окно с карточкой художника */
+.controls[data-shifted="true"] { right: 456px; }
+.panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 440px; max-width: 100vw; z-index: 10;
+  background: var(--bg); border-left: 1px solid var(--crust); overflow-y: auto; padding: 20px 24px 32px;
+}
+.panel-close { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; background: var(--bg); color: var(--ink); border: 1px solid var(--crust); cursor: pointer; }
+.panel-close:hover { border-color: var(--wine); color: var(--wine); }
+.panel-body { display: grid; gap: 24px; }
+.panel-head { display: flex; gap: 16px; align-items: flex-start; padding-right: 44px; }
+.panel-portrait { width: 96px; height: 120px; flex: none; background: var(--cream); color: var(--rose-dust); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; overflow: hidden; }
+.panel-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.panel h2 { margin: 0; font-size: 24px; line-height: 28px; letter-spacing: -0.02em; color: var(--ink); }
+.panel h3 { margin: 0 0 8px; font-size: 13px; line-height: 18px; font-weight: 700; color: var(--wine); text-transform: uppercase; letter-spacing: 0.06em; }
+.panel p { margin: 0 0 8px; }
+.panel .muted { color: var(--rose-dust); }
+.panel .src { display: block; font-size: 12px; line-height: 17px; color: var(--rose-dust); margin-top: 4px; }
+.panel a { color: var(--wine); }
+.panel .facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.panel .works { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; }
+.panel .works img { width: 100%; height: auto; display: block; background: var(--cream); }
+.panel .noimg { border: 1px dashed var(--crust); padding: 28px 12px; text-align: center; font-size: 12px; color: var(--rose-dust); }
+.panel .w-title { font-weight: 700; margin-top: 6px; }
+.panel .tag { margin-left: 6px; padding: 0 6px; font-size: 11px; line-height: 16px; border: 1px solid var(--crust); color: var(--rose-dust); font-weight: 400; white-space: nowrap; }
+.panel .linkish { padding: 0; border: 0; background: none; color: var(--wine); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.panel .people { margin-bottom: 6px; }
+@media (max-width: 719px) {
+  .panel { top: auto; left: 0; width: 100%; height: 62vh; border-left: 0; border-top: 1px solid var(--crust); }
+  .controls[data-shifted="true"] { right: 16px; bottom: calc(62vh + 16px); }
+}
+
+/* React Flow отключает события у узлов, если они не выбираются и не перетаскиваются; карточки кликабельны */
+.react-flow__node { pointer-events: all !important; cursor: pointer; }

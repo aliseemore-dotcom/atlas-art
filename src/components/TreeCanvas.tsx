@@ -12,16 +12,43 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArtistPanel } from "./ArtistPanel";
 import type { TreeCard, TreeData } from "@/lib/tree/build";
 
 type EdgeData = { path: string; type: "teacher_of" | "influenced" | "collaborated"; label: string };
 
 /** Карточка: портрет (прямоугольник), имя и годы. Больше ничего. */
-const CardNode = memo(function CardNode({ data }: NodeProps<Node<{ card: TreeCard }>>) {
-  const c = data.card;
+type CardData = { card: TreeCard; selected: boolean; onOpen: (slug: string) => void; onReveal: (slug: string) => void };
+
+const CardNode = memo(function CardNode({ data }: NodeProps<Node<CardData>>) {
+  const { card: c, selected, onOpen, onReveal } = data;
+  const down = useRef<{ x: number; y: number } | null>(null);
   return (
-    <div className="card" data-approx={c.approx} data-testid={`card-${c.slug}`} role="group" aria-label={`${c.nameRu}, ${c.years}`}>
+    <div
+      className="card"
+      data-approx={c.approx}
+      data-selected={selected}
+      data-testid={`card-${c.slug}`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      aria-label={`${c.nameRu}, ${c.years}. Открыть карточку`}
+      onFocus={() => onReveal(c.slug)}
+      onPointerDown={(e) => (down.current = { x: e.clientX, y: e.clientY })}
+      onClick={(e) => {
+        // перетаскивание древа за карточку не открывает её
+        const d = down.current;
+        if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5) return;
+        onOpen(c.slug);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(c.slug);
+        }
+      }}
+    >
       <Handle type="target" position={Position.Top} isConnectable={false} style={{ opacity: 0, pointerEvents: "none" }} />
       <div className="portrait">
         {c.portraitUrl ? (
@@ -62,9 +89,43 @@ const MIN_FIT = 0.3; // если всё древо целиком мельче, 
 function Inner({ tree }: { tree: TreeData }) {
   const rf = useReactFlow();
 
-  const nodes: Node<{ card: TreeCard }>[] = useMemo(
-    () => tree.cards.map((c) => ({ id: c.id, type: "card", position: { x: c.left, y: c.top }, width: c.width, height: c.height, draggable: false, data: { card: c } })),
-    [tree.cards],
+  const [selected, setSelected] = useState<string | null>(null);
+  const bySlug = useMemo(() => new Map(tree.cards.map((c) => [c.slug, c])), [tree.cards]);
+
+  // Выбор художника: открывает окно и сдвигает древо так, чтобы карточка осталась видимой слева от окна
+  const open = useCallback(
+    (slug: string) => {
+      const c = bySlug.get(slug);
+      if (!c) return;
+      setSelected(slug);
+      history.replaceState(null, "", `#${slug}`);
+      const panelW = window.innerWidth >= 720 ? 440 : 0;
+      const z = Math.max(rf.getZoom(), 0.5);
+      rf.setCenter(c.left + c.width / 2 + panelW / 2 / z, c.top + c.height / 2 + (panelW ? 0 : window.innerHeight * 0.31 / z), { zoom: z, duration: 250 });
+    },
+    [bySlug, rf],
+  );
+  // Клавиатурный фокус на карточке вне экрана: подвести её в поле зрения (окно, если открыто, закрывает правую часть)
+  const reveal = useCallback(
+    (slug: string) => {
+      const c = bySlug.get(slug);
+      if (!c) return;
+      const tl = rf.flowToScreenPosition({ x: c.left, y: c.top });
+      const z = rf.getZoom();
+      const right = window.innerWidth - (window.innerWidth >= 720 && selected ? 440 : 0);
+      const visible = tl.x >= 0 && tl.y >= 0 && tl.x + c.width * z <= right && tl.y + c.height * z <= window.innerHeight;
+      if (!visible) rf.setCenter(c.left + c.width / 2, c.top + c.height / 2, { zoom: Math.max(z, READABLE), duration: 200 });
+    },
+    [bySlug, rf, selected],
+  );
+  const close = useCallback(() => {
+    setSelected(null);
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, []);
+
+  const nodes: Node<CardData>[] = useMemo(
+    () => tree.cards.map((c) => ({ id: c.id, type: "card", position: { x: c.left, y: c.top }, width: c.width, height: c.height, draggable: false, data: { card: c, selected: selected === c.slug, onOpen: open, onReveal: reveal } })),
+    [tree.cards, selected, open, reveal],
   );
   const edges: Edge<EdgeData>[] = useMemo(
     () => tree.edges.map((e) => ({ id: e.id, source: e.fromId, target: e.toId, type: "line", selectable: false, focusable: false, data: { path: e.path, type: e.type, label: e.label } })),
@@ -83,9 +144,19 @@ function Inner({ tree }: { tree: TreeData }) {
     }
   }, [rf, tree.width, tree.height]);
   useEffect(() => {
-    const t = setTimeout(initialView, 60);
+    const t = setTimeout(() => {
+      const slug = decodeURIComponent(window.location.hash.slice(1));
+      if (slug && bySlug.has(slug)) open(slug); // ссылка на карточку: #ilya-repin
+      else initialView();
+    }, 60);
     return () => clearTimeout(t);
-  }, [initialView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [close]);
 
   return (
     <>
@@ -108,9 +179,11 @@ function Inner({ tree }: { tree: TreeData }) {
         zoomActivationKeyCode={["Control", "Meta"]}
         preventScrolling
         proOptions={{ hideAttribution: true }}
+        onPaneClick={close}
         aria-label="Древо художников"
       />
-      <div className="controls" role="group" aria-label="Управление древом">
+      {selected && <ArtistPanel key={selected} slug={selected} onClose={close} onOpen={open} />}
+      <div className="controls" data-shifted={selected !== null} role="group" aria-label="Управление древом">
         <button type="button" aria-label="Приблизить" onClick={() => rf.zoomIn({ duration: 150 })}>
           <svg width="20" height="20" viewBox="0 0 20 20" {...ICON}><path d="M10 4v12M4 10h12" /></svg>
         </button>
