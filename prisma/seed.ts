@@ -193,6 +193,8 @@ async function main() {
         })),
       });
     }
+    // источники, удалённые из CSV, убираем из базы (ссылки на них уже сняты выше)
+    await prisma.source.deleteMany({ where: { seedId: { not: null, notIn: sources.records.map((x) => x.seedId) } } });
     console.log(`Контент: сводок ${summaries.records.length}, фактов ${facts.records.length}, картин ${works.records.length}, объединений ${groups.records.length}, участий ${memberships.records.length}.`);
   } else {
     console.error("Контент (сводки, факты, картины, объединения) не импортирован: исправьте ошибки выше.");
