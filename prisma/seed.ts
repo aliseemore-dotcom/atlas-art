@@ -1,12 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { parseArtworksCsv, parseFactsCsv, parseGroupsCsv, parseMembershipsCsv, parseSummariesCsv, type Ctx } from "../src/lib/import/content";
 import { parsePortraitsCsv, parseRelationshipsCsv, parseSourcesCsv } from "../src/lib/import/relationships";
 import { parseSeedCsv } from "../src/lib/import/seed";
 import { slugify } from "../src/lib/text";
 
 const prisma = new PrismaClient();
-const DATA = path.resolve(import.meta.dirname, "../data");
+const DATA = process.env.ATLAS_DATA_DIR ?? path.resolve(import.meta.dirname, "../data");
 const CSV = path.join(DATA, "artists_seed.csv");
 const readData = (f: string) => readFileSync(path.join(DATA, f), "utf8");
 
@@ -90,7 +91,7 @@ async function main() {
     sourceDbId.set(seedId, row.id);
   }
 
-  const dbArtists = await prisma.artist.findMany({ select: { id: true, seedId: true, slug: true, birthYear: true } });
+  const dbArtists = await prisma.artist.findMany({ select: { id: true, seedId: true, slug: true, birthYear: true, deathYear: true } });
   const bySeed = new Map(dbArtists.filter((a) => a.seedId).map((a) => [a.seedId as string, a]));
   const rels = parseRelationshipsCsv(
     readData("relationships_seed.csv"),
@@ -130,6 +131,71 @@ async function main() {
       where: { slug: p.slug },
       data: { portraitUrl: p.url, portraitRights: p.rights, portraitCredit: p.credit, portraitSourceUrl: p.sourceUrl },
     });
+  }
+
+  // ---- сводки, факты, картины, объединения ----
+  const ctx: Ctx = {
+    artists: new Map(dbArtists.map((a) => [a.slug, { birthYear: a.birthYear, deathYear: a.deathYear }])),
+    sourceIds: new Set(sources.records.map((x) => x.seedId)),
+  };
+  const idBySlug = new Map(dbArtists.map((a) => [a.slug, a.id]));
+  const summaries = parseSummariesCsv(readData("summaries.csv"), ctx);
+  const facts = parseFactsCsv(readData("facts_seed.csv"), ctx);
+  const works = parseArtworksCsv(readData("artworks_seed.csv"), ctx);
+  const groups = parseGroupsCsv(readData("groups_seed.csv"));
+  const memberships = parseMembershipsCsv(readData("memberships_seed.csv"), ctx, new Map(groups.records.map((g) => [g.slug, { fromYear: g.fromYear, toYear: g.toYear }])));
+  const content = { summaries, facts, works, groups, memberships };
+  for (const [name, r] of Object.entries(content)) {
+    r.issues.forEach((i) => console.error(`[ошибка: ${name}] строка ${i.line} (${i.id ?? "?"}): ${i.message}`));
+    if ("warnings" in r) r.warnings.forEach((i) => console.warn(`[предупреждение: ${name}] строка ${i.line} (${i.id ?? "?"}): ${i.message}`));
+    allIssues.push(...r.issues);
+  }
+  const contentIssues = Object.values(content).reduce((n, r) => n + r.issues.length, 0);
+  if (contentIssues === 0) {
+    for (const r of summaries.records) {
+      await prisma.artist.update({ where: { slug: r.artistSlug }, data: { bio: r.summary, bioSourceId: sourceDbId.get(r.sourceSeedId) } });
+    }
+    for (const r of facts.records) {
+      const data = { artistId: idBySlug.get(r.artistSlug) as string, text: r.text, sourceId: sourceDbId.get(r.sourceSeedId) as string, sortOrder: r.sortOrder };
+      await prisma.artistFact.upsert({ where: { seedId: r.seedId }, update: data, create: { seedId: r.seedId, ...data } });
+    }
+    await prisma.artistFact.deleteMany({ where: { seedId: { not: null, notIn: facts.records.map((f) => f.seedId) } } });
+
+    for (const g of groups.records) {
+      const { seedId, ...rest } = g;
+      await prisma.group.upsert({ where: { seedId }, update: rest, create: { seedId, ...rest } });
+    }
+    for (const w of works.records) {
+      const prev = await prisma.artwork.findUnique({ where: { seedId: w.seedId } });
+      if (prev?.verificationStatus === "verified") {
+        console.warn(`[конфликт] картина ${w.seedId}: запись verified, черновые данные не применены`);
+        continue;
+      }
+      const { seedId, artistSlugs, sourceSeedId, ...rest } = w;
+      const data = { ...rest, sourceId: sourceSeedId ? sourceDbId.get(sourceSeedId) : null };
+      const art = await prisma.artwork.upsert({ where: { seedId }, update: data, create: { seedId, ...data } });
+      await prisma.artworkArtist.deleteMany({ where: { artworkId: art.id } });
+      await prisma.artworkArtist.createMany({ data: artistSlugs.map((s) => ({ artworkId: art.id, artistId: idBySlug.get(s) as string })) });
+    }
+    await prisma.artwork.deleteMany({ where: { seedId: { not: null, notIn: works.records.map((w) => w.seedId) } } });
+
+    const groupId = new Map((await prisma.group.findMany({ select: { id: true, slug: true } })).map((g) => [g.slug, g.id]));
+    await prisma.artistGroup.deleteMany({});
+    if (memberships.records.length) {
+      await prisma.artistGroup.createMany({
+        data: memberships.records.map((m) => ({
+          artistId: idBySlug.get(m.artistSlug) as string,
+          groupId: groupId.get(m.groupSlug) as string,
+          fromYear: m.fromYear,
+          toYear: m.toYear,
+          verificationStatus: m.verificationStatus,
+          sourceId: m.sourceSeedId ? sourceDbId.get(m.sourceSeedId) : null,
+        })),
+      });
+    }
+    console.log(`Контент: сводок ${summaries.records.length}, фактов ${facts.records.length}, картин ${works.records.length}, объединений ${groups.records.length}, участий ${memberships.records.length}.`);
+  } else {
+    console.error("Контент (сводки, факты, картины, объединения) не импортирован: исправьте ошибки выше.");
   }
 
   console.log(`Связи: ${relCount}, источники: ${sources.records.length}, портреты: ${portraits.records.length}.`);

@@ -52,6 +52,13 @@ enum ImageRights {
   licensed
 }
 
+enum GroupType {
+  artist_collective
+  association
+  school
+  workshop
+}
+
 enum ArtistRegionRole {
   born
   worked
@@ -78,7 +85,9 @@ model Artist {
   birthYearMax       Int?
   deathYearMin       Int?
   deathYearMax       Int?
-  bio                String?
+  bio                String? // краткая сводка (3–5 предложений); без источника не показывается
+  bioSourceId        String?
+  bioSource          Source?            @relation("BioSource", fields: [bioSourceId], references: [id], onDelete: SetNull)
   eraLabel           String? // ярлык из черновика, не является направлением
   // Портрет показывается только при подтверждённых правах (public_domain/licensed) и указанных авторе и источнике.
   portraitUrl        String?
@@ -90,6 +99,9 @@ model Artist {
   movements          ArtistMovement[]
   genres             ArtistGenre[]
   regions            ArtistRegion[]
+  facts              ArtistFact[]
+  works              ArtworkArtist[]
+  groups             ArtistGroup[]
   relationsFrom      Relationship[]     @relation("RelFrom")
   relationsTo        Relationship[]     @relation("RelTo")
   createdAt          DateTime           @default(now())
@@ -161,16 +173,20 @@ model ArtistRegion {
 }
 
 model Source {
-  id                String               @id @default(cuid())
-  seedId            String?              @unique
-  title             String
+  id                  String               @id @default(cuid())
+  seedId              String?              @unique
+  title               String
   authorOrInstitution String?
-  url               String?
-  publicationYear   Int?
-  page              String?
-  notes             String?
-  sourceType        SourceType           @default(other)
-  relationships     RelationshipSource[]
+  url                 String?
+  publicationYear     Int?
+  page                String?
+  notes               String?
+  sourceType          SourceType           @default(other)
+  relationships       RelationshipSource[]
+  bios                Artist[]             @relation("BioSource")
+  facts               ArtistFact[]
+  artworks            Artwork[]
+  memberships         ArtistGroup[]
 }
 
 // teacher_of: from = учитель, to = ученик. influenced: from повлиял на to.
@@ -203,4 +219,79 @@ model RelationshipSource {
   source         Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@id([relationshipId, sourceId])
+}
+
+// Интересный факт о художнике. Источник обязателен: факт без источника не хранится.
+model ArtistFact {
+  id        String  @id @default(cuid())
+  seedId    String? @unique
+  artistId  String
+  text      String
+  sourceId  String
+  sortOrder Int     @default(0)
+  artist    Artist  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  source    Source  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@index([artistId])
+}
+
+// Картина. Изображение показывается только при rights = public_domain/licensed и указанных авторе и источнике.
+model Artwork {
+  id                 String             @id @default(cuid())
+  slug               String             @unique
+  seedId             String?            @unique
+  titleRu            String
+  yearFrom           Int?
+  yearTo             Int?
+  yearPrecision      DatePrecision      @default(unknown)
+  medium             String?
+  currentCollection  String?
+  imageUrl           String?
+  imageRights        ImageRights        @default(unknown)
+  imageCredit        String?
+  imageSourceUrl     String?
+  verificationStatus VerificationStatus @default(needs_review)
+  sourceId           String?
+  sortOrder          Int                @default(0)
+  source             Source?            @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  artists            ArtworkArtist[]
+}
+
+model ArtworkArtist {
+  artworkId String
+  artistId  String
+  artwork   Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  artist    Artist  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([artworkId, artistId])
+  @@index([artistId])
+}
+
+// Объединение (Group), а не направление и не художник: «Передвижники», «Мир искусства», «Бубновый валет».
+model Group {
+  id                 String             @id @default(cuid())
+  slug               String             @unique
+  seedId             String?            @unique
+  nameRu             String
+  type               GroupType
+  fromYear           Int?
+  toYear             Int?
+  description        String?
+  verificationStatus VerificationStatus @default(needs_review)
+  members            ArtistGroup[]
+}
+
+model ArtistGroup {
+  artistId           String
+  groupId            String
+  fromYear           Int?
+  toYear             Int?
+  verificationStatus VerificationStatus @default(needs_review)
+  sourceId           String?
+  artist             Artist             @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  group              Group              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  source             Source?            @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@id([artistId, groupId])
+  @@index([groupId])
 }
