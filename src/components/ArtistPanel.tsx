@@ -29,16 +29,27 @@ function Source({ source }: { source: SourceRef | null }) {
 function People({ title, items, onOpen }: { title: string; items: Rel[]; onOpen: (slug: string) => void }) {
   if (items.length === 0) return null;
   return (
-    <p className="people">
-      <span className="muted">{title}: </span>
-      {items.map((r, i) => (
-        <span key={r.other.slug + r.type + r.direction}>
-          {i > 0 && ", "}
-          <button type="button" className="linkish" onClick={() => onOpen(r.other.slug)}>{r.other.nameRu}</button>
-          {r.status !== "verified" && <span className="tag" title="Связь внесена без подтверждающего источника">не сверено</span>}
+    <div className="people">
+      <p>
+        <span className="muted">{title}: </span>
+        {items.map((r, i) => (
+          <span key={r.other.slug + r.type + r.direction}>
+            {i > 0 && ", "}
+            <button type="button" className="linkish" onClick={() => onOpen(r.other.slug)}>{r.other.nameRu}</button>
+            {r.status !== "verified" && (
+              <span className="tag" title={r.sources.length ? "Источник указан, связь ждёт подтверждения" : "Связь внесена без подтверждающего источника"}>
+                {r.sources.length ? "ждёт подтверждения" : "источника нет"}
+              </span>
+            )}
+          </span>
+        ))}
+      </p>
+      {items.filter((r) => r.sources.length).map((r) => (
+        <span key={"s" + r.other.slug + r.type + r.direction} className="src">
+          {r.other.nameRu}: {r.sources.map((x) => sourceLine(x)).join("; ")}
         </span>
       ))}
-    </p>
+    </div>
   );
 }
 

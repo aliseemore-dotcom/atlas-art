@@ -24,8 +24,8 @@ export async function getArtistProfile(slug: string) {
     works: a.works.map((w) => ({ ...w.artwork, source: src(w.artwork.source) })),
     groups: a.groups.map((g) => ({ nameRu: g.group.nameRu, slug: g.group.slug, type: g.group.type, fromYear: g.fromYear, toYear: g.toYear, verificationStatus: g.verificationStatus, source: src(g.source) })),
     relations: [
-      ...a.relationsFrom.map((r) => ({ type: r.type, direction: "out" as const, other: r.to, status: r.verificationStatus, sources: r.sources.map((x) => src(x.source) as SourceRef) })),
-      ...a.relationsTo.map((r) => ({ type: r.type, direction: "in" as const, other: r.from, status: r.verificationStatus, sources: r.sources.map((x) => src(x.source) as SourceRef) })),
+      ...a.relationsFrom.map((r) => ({ type: r.type, direction: "out" as const, other: r.to, status: r.verificationStatus, sources: r.sources.map((x) => ({ ...(src(x.source) as SourceRef), page: x.note ?? x.source.page })) })),
+      ...a.relationsTo.map((r) => ({ type: r.type, direction: "in" as const, other: r.from, status: r.verificationStatus, sources: r.sources.map((x) => ({ ...(src(x.source) as SourceRef), page: x.note ?? x.source.page })) })),
     ],
   });
 }

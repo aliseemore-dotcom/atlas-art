@@ -115,7 +115,7 @@ async function main() {
       const data = { fromArtistId: fromId, toArtistId: toId, type: r.type, fromYear: r.fromYear, toYear: r.toYear, verificationStatus: r.verificationStatus, evidenceNote: r.evidenceNote };
       const rel = await prisma.relationship.upsert({ where: { seedId: r.seedId }, update: data, create: { seedId: r.seedId, ...data } });
       await prisma.relationshipSource.deleteMany({ where: { relationshipId: rel.id } });
-      const links = r.sourceSeedIds.map((sid) => ({ relationshipId: rel.id, sourceId: sourceDbId.get(sid) as string }));
+      const links = r.sources.map((x) => ({ relationshipId: rel.id, sourceId: sourceDbId.get(x.id) as string, note: x.note }));
       if (links.length) await prisma.relationshipSource.createMany({ data: links });
       relCount++;
     }

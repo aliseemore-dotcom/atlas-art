@@ -143,12 +143,13 @@ test.describe("боковое окно карточки", () => {
     await expect(page).toHaveURL(/#ilya-repin$/);
   });
 
-  test("в окне видны связи с пометкой «не сверено»; клик по имени открывает другого художника", async ({ page }) => {
+  test("в окне видны связи с источником и статусом; клик по имени открывает другого художника", async ({ page }) => {
     await page.goto("/#ilya-repin");
     const panel = page.getByTestId("artist-panel");
     await expect(panel.getByRole("heading", { name: "Илья Репин" })).toBeVisible();
     await expect(panel).toContainText("Учителя:");
-    await expect(panel.locator(".tag").first()).toHaveText("не сверено");
+    await expect(panel.locator(".tag").first()).toHaveText("ждёт подтверждения"); // Крамской → Репин: страница книги указана
+    await expect(panel).toContainText("Тайны русского искусства, Маркус Ф. Ф., с. 520");
     await panel.getByRole("button", { name: "Иван Крамской" }).click();
     await expect(panel.getByRole("heading", { name: "Иван Крамской" })).toBeVisible();
     await expect(page).toHaveURL(/#ivan-kramskoy$/);

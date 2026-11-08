@@ -87,7 +87,8 @@ export interface RelationshipRecord {
   toYear: number | null;
   verificationStatus: "draft" | "needs_review" | "verified";
   evidenceNote: string | null;
-  sourceSeedIds: string[];
+  /** источники связи; note — страница или место в источнике («с. 60») */
+  sources: { id: string; note: string | null }[];
 }
 
 export interface ArtistRef {
@@ -156,8 +157,16 @@ export function parseRelationshipsCsv(
     if (!a) return fail(`неизвестный художник from: ${r.from_seed_id}`);
     if (!b) return fail(`неизвестный художник to: ${r.to_seed_id}`);
     if (r.from_seed_id === r.to_seed_id) return fail("связь художника с самим собой");
-    const srcs = r.source_ids.split(";").map((s) => s.trim()).filter(Boolean);
-    const missing = srcs.filter((s) => !sourceIds.has(s));
+    // source_ids: «id» или «id|с. 60», несколько через «;»
+    const srcs = r.source_ids
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => {
+        const [id, ...note] = s.split("|");
+        return { id: (id as string).trim(), note: note.join("|").trim() || null };
+      });
+    const missing = srcs.map((x) => x.id).filter((id) => !sourceIds.has(id));
     if (missing.length) return fail(`неизвестные источники: ${missing.join(", ")}`);
     if (r.verification_status === "verified" && srcs.length === 0) return fail("verified требует хотя бы один источник");
     if (r.from_year !== null && r.to_year !== null && r.from_year > r.to_year) return fail("from_year позже to_year");
@@ -184,7 +193,7 @@ export function parseRelationshipsCsv(
       toYear: r.to_year,
       verificationStatus: r.verification_status,
       evidenceNote: r.evidence_note,
-      sourceSeedIds: srcs,
+      sources: srcs,
     });
   });
 
